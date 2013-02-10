@@ -1,0 +1,545 @@
+-- FDR compression functions
+transparent diamond
+transparent normalise
+
+
+-- Wright defined processes
+channel abstractEvent
+DFA = abstractEvent -> DFA |~| SKIP
+
+quant_semi({},_) = SKIP
+quant_semi(S,PARAM) = |~| i:S @ PARAM(i) ; quant_semi(diff(S,{i}),PARAM)
+
+power_set({}) = {{}}
+power_set(S) = { union(y,{x}) | x <- S, y <- power_set(diff(S,{x}))}
+
+
+
+-- Configuration GasStation
+  -- Types declarations
+  -- events for abstract specification
+  channel pay, getOrder, pump, take, activate, accept
+  
+  
+  -- Component Cashier
+    
+    
+    ALPHA_Cashier = {|ToPump.activate, Customer1.accept, Customer2.accept
+        |}
+    
+    ComputationCashier = ((Customer1.accept -> (ToPump.activate -> ComputationCashier
+          )) [] (Customer2.accept -> (ToPump.activate -> ComputationCashier
+          )))
+      
+    
+    --Port Process
+    ALPHA_Customer1 = {accept}
+    ALPHA_Customer1I = {}
+    PORTCustomer1 = (accept -> PORTCustomer1)
+    Customer1G = PORTCustomer1[[ x <-Customer1.x | x <- ALPHA_Customer1
+         ]]
+    
+    ALPHA_Customer2 = {accept}
+    ALPHA_Customer2I = {}
+    PORTCustomer2 = (accept -> PORTCustomer2)
+    Customer2G = PORTCustomer2[[ x <-Customer2.x | x <- ALPHA_Customer2
+         ]]
+    
+    ALPHA_ToPump = {activate}
+    -- no events observed!
+    PORTToPump = (activate -> PORTToPump)
+    ToPumpG = PORTToPump[[ x <-ToPump.x | x <- ALPHA_ToPump ]]
+    
+    channel Customer1: {accept}
+    channel Customer2: {accept}
+    channel ToPump: {activate}
+    --Deterministic Process restricted to the observed event
+    
+    PORTCustomer1DETR = (accept -> PORTCustomer1DETR)
+    CompCustomer1 = (Customer1.accept -> CompCustomer1)
+    PORTCustomer2DETR = (accept -> PORTCustomer2DETR)
+    CompCustomer2 = (Customer2.accept -> CompCustomer2)
+    PORTToPumpDETR = SKIP
+    CompToPump = ((ToPump.activate -> CompToPump) [] (ToPump.activate -> CompToPump
+          ))
+    
+    
+    COMPCustomer1 = (( PORTCustomer2DETR [[ x <- Customer2.x | x <- {accept
+         } ]]
+        [| diff({Customer2.accept}, {}) |]
+        ( PORTToPumpDETR 
+        [| diff({}, {}) |]
+        ComputationCashier)))\ diff(ALPHA_Cashier, {|Customer1|})
+    assert Customer1G [FD= COMPCustomer1
+    assert Customer1G [FD= CompCustomer1
+    
+    COMPCustomer2 = (( PORTCustomer1DETR [[ x <- Customer1.x | x <- {accept
+         } ]]
+        [| diff({Customer1.accept}, {}) |]
+        ( PORTToPumpDETR 
+        [| diff({}, {}) |]
+        ComputationCashier)))\ diff(ALPHA_Cashier, {|Customer2|})
+    assert Customer2G [FD= COMPCustomer2
+    assert Customer2G [FD= CompCustomer2
+    
+    COMPToPump = (( PORTCustomer1DETR [[ x <- Customer1.x | x <- {accept
+         } ]]
+        [| diff({Customer1.accept}, {}) |]
+        ( PORTCustomer2DETR [[ x <- Customer2.x | x <- {accept } ]]
+        [| diff({Customer2.accept}, {}) |]
+        ComputationCashier)))\ diff(ALPHA_Cashier, {|ToPump|})
+    assert ToPumpG [FD= COMPToPump
+    assert ToPumpG [FD= CompToPump
+    
+    
+  
+  -- Component Pump
+    
+    
+    ALPHA_Pump = {|FromCashier.getOrder, Hose2.take, Hose1.take, Gas1.pump
+        , Gas2.pump|}
+    
+    ComputationPump = (FromCashier.getOrder -> ((Hose1.take -> (Gas1.pump
+           -> ComputationPump)) [] (Hose2.take -> (Gas2.pump -> ComputationPump
+          ))))
+      
+    
+    --Port Process
+    ALPHA_Hose1 = {take}
+    ALPHA_Hose1I = {}
+    PORTHose1 = (take -> PORTHose1)
+    Hose1G = PORTHose1[[ x <-Hose1.x | x <- ALPHA_Hose1 ]]
+    
+    ALPHA_Gas1 = {pump}
+    -- no events observed!
+    PORTGas1 = (pump -> PORTGas1)
+    Gas1G = PORTGas1[[ x <-Gas1.x | x <- ALPHA_Gas1 ]]
+    
+    ALPHA_Hose2 = {take}
+    ALPHA_Hose2I = {}
+    PORTHose2 = (take -> PORTHose2)
+    Hose2G = PORTHose2[[ x <-Hose2.x | x <- ALPHA_Hose2 ]]
+    
+    ALPHA_Gas2 = {pump}
+    -- no events observed!
+    PORTGas2 = (pump -> PORTGas2)
+    Gas2G = PORTGas2[[ x <-Gas2.x | x <- ALPHA_Gas2 ]]
+    
+    ALPHA_FromCashier = {getOrder}
+    -- no events observed!
+    PORTFromCashier = (getOrder -> PORTFromCashier)
+    FromCashierG = PORTFromCashier[[ x <-FromCashier.x | x <- ALPHA_FromCashier
+         ]]
+    
+    channel Hose1: {take}
+    channel Gas1: {pump}
+    channel Hose2: {take}
+    channel Gas2: {pump}
+    channel FromCashier: {getOrder}
+    --Deterministic Process restricted to the observed event
+    
+    PORTHose1DETR = (take -> PORTHose1DETR)
+    CompHose1 = (Hose1.take -> CompHose1)
+    PORTGas1DETR = SKIP
+    CompGas1 = (Gas1.pump -> CompGas1)
+    PORTHose2DETR = (take -> PORTHose2DETR)
+    CompHose2 = (Hose2.take -> CompHose2)
+    PORTGas2DETR = SKIP
+    CompGas2 = (Gas2.pump -> CompGas2)
+    PORTFromCashierDETR = SKIP
+    CompFromCashier = (FromCashier.getOrder -> (CompFromCashier [] CompFromCashier
+          ))
+    
+    
+    COMPHose1 = (( PORTGas1DETR 
+        [| diff({}, {}) |]
+        ( PORTHose2DETR [[ x <- Hose2.x | x <- {take } ]]
+        [| diff({Hose2.take}, {}) |]
+        ( PORTGas2DETR 
+        [| diff({}, {}) |]
+        ( PORTFromCashierDETR 
+        [| diff({}, {}) |]
+        ComputationPump)))))\ diff(ALPHA_Pump, {|Hose1|})
+    assert Hose1G [FD= COMPHose1
+    assert Hose1G [FD= CompHose1
+    
+    COMPGas1 = (( PORTHose1DETR [[ x <- Hose1.x | x <- {take } ]]
+        [| diff({Hose1.take}, {}) |]
+        ( PORTHose2DETR [[ x <- Hose2.x | x <- {take } ]]
+        [| diff({Hose2.take}, {}) |]
+        ( PORTGas2DETR 
+        [| diff({}, {}) |]
+        ( PORTFromCashierDETR 
+        [| diff({}, {}) |]
+        ComputationPump)))))\ diff(ALPHA_Pump, {|Gas1|})
+    assert Gas1G [FD= COMPGas1
+    assert Gas1G [FD= CompGas1
+    
+    COMPHose2 = (( PORTHose1DETR [[ x <- Hose1.x | x <- {take } ]]
+        [| diff({Hose1.take}, {}) |]
+        ( PORTGas1DETR 
+        [| diff({}, {}) |]
+        ( PORTGas2DETR 
+        [| diff({}, {}) |]
+        ( PORTFromCashierDETR 
+        [| diff({}, {}) |]
+        ComputationPump)))))\ diff(ALPHA_Pump, {|Hose2|})
+    assert Hose2G [FD= COMPHose2
+    assert Hose2G [FD= CompHose2
+    
+    COMPGas2 = (( PORTHose1DETR [[ x <- Hose1.x | x <- {take } ]]
+        [| diff({Hose1.take}, {}) |]
+        ( PORTGas1DETR 
+        [| diff({}, {}) |]
+        ( PORTHose2DETR [[ x <- Hose2.x | x <- {take } ]]
+        [| diff({Hose2.take}, {}) |]
+        ( PORTFromCashierDETR 
+        [| diff({}, {}) |]
+        ComputationPump)))))\ diff(ALPHA_Pump, {|Gas2|})
+    assert Gas2G [FD= COMPGas2
+    assert Gas2G [FD= CompGas2
+    
+    COMPFromCashier = (( PORTHose1DETR [[ x <- Hose1.x | x <- {take } ]]
+        [| diff({Hose1.take}, {}) |]
+        ( PORTGas1DETR 
+        [| diff({}, {}) |]
+        ( PORTHose2DETR [[ x <- Hose2.x | x <- {take } ]]
+        [| diff({Hose2.take}, {}) |]
+        ( PORTGas2DETR 
+        [| diff({}, {}) |]
+        ComputationPump)))))\ diff(ALPHA_Pump, {|FromCashier|})
+    assert FromCashierG [FD= COMPFromCashier
+    assert FromCashierG [FD= CompFromCashier
+    
+    
+  
+  -- Component Customer
+    
+    
+    ALPHA_Customer = {|Gas.pump, Pay.pay, Take.take|}
+    
+    ComputationCustomer = (Pay.pay -> (Take.take -> (Gas.pump -> ComputationCustomer
+          )))
+      
+    
+    --Port Process
+    ALPHA_Pay = {pay}
+    -- no events observed!
+    PORTPay = (pay -> PORTPay)
+    PayG = PORTPay[[ x <-Pay.x | x <- ALPHA_Pay ]]
+    
+    ALPHA_Take = {take}
+    -- no events observed!
+    PORTTake = (take -> PORTTake)
+    TakeG = PORTTake[[ x <-Take.x | x <- ALPHA_Take ]]
+    
+    ALPHA_Gas = {pump}
+    ALPHA_GasI = {}
+    PORTGas = (pump -> PORTGas)
+    GasG = PORTGas[[ x <-Gas.x | x <- ALPHA_Gas ]]
+    
+    channel Pay: {pay}
+    channel Take: {take}
+    channel Gas: {pump}
+    --Deterministic Process restricted to the observed event
+    
+    PORTPayDETR = SKIP
+    CompPay = (Pay.pay -> CompPay)
+    PORTTakeDETR = SKIP
+    CompTake = (Take.take -> CompTake)
+    PORTGasDETR = (pump -> PORTGasDETR)
+    CompGas = (Gas.pump -> CompGas)
+    
+    
+    COMPPay = (( PORTTakeDETR 
+        [| diff({}, {}) |]
+        ( PORTGasDETR [[ x <- Gas.x | x <- {pump } ]]
+        [| diff({Gas.pump}, {}) |]
+        ComputationCustomer)))\ diff(ALPHA_Customer, {|Pay|})
+    assert PayG [FD= COMPPay
+    assert PayG [FD= CompPay
+    
+    COMPTake = (( PORTPayDETR 
+        [| diff({}, {}) |]
+        ( PORTGasDETR [[ x <- Gas.x | x <- {pump } ]]
+        [| diff({Gas.pump}, {}) |]
+        ComputationCustomer)))\ diff(ALPHA_Customer, {|Take|})
+    assert TakeG [FD= COMPTake
+    assert TakeG [FD= CompTake
+    
+    COMPGas = (( PORTPayDETR 
+        [| diff({}, {}) |]
+        ( PORTTakeDETR 
+        [| diff({}, {}) |]
+        ComputationCustomer)))\ diff(ALPHA_Customer, {|Gas|})
+    assert GasG [FD= COMPGas
+    assert GasG [FD= CompGas
+    
+    
+  
+  -- Connector CustomerCashier
+    -- generated definitions (to split long sets)
+    
+    ALPHA_CustomerCashier = {|Getmoney.accept, Givemoney.pay|}
+    GlueCustomerCashier = (Givemoney.pay -> (Getmoney.accept -> GlueCustomerCashier
+          ))
+      
+    
+    ALPHA_Givemoney = {pay}
+    ROLEGivemoney = (pay -> ROLEGivemoney)
+    GivemoneyA = ROLEGivemoney [[ x <- abstractEvent | x <- ALPHA_Givemoney
+         ]]
+    assert DFA [FD= GivemoneyA
+    
+    ALPHA_Getmoney = {accept}
+    ROLEGetmoney = (accept -> ROLEGetmoney)
+    GetmoneyA = ROLEGetmoney [[ x <- abstractEvent | x <- ALPHA_Getmoney
+         ]]
+    assert DFA [FD= GetmoneyA
+    
+    ROLEGivemoneyDET = (pay -> ROLEGivemoneyDET)
+    ROLEGetmoneyDET = (accept -> ROLEGetmoneyDET)
+    
+    channel Givemoney: {pay}
+    channel Getmoney: {accept}
+    CustomerCashier = (( ROLEGivemoney[[ x <- Givemoney.x | x <- {pay } ]]
+        [| diff({|Givemoney|}, {}) |]
+        ( ROLEGetmoney[[ x <- Getmoney.x | x <- {accept } ]]
+        [| diff({|Getmoney|}, {}) |]
+        GlueCustomerCashier)))
+    CustomerCashierA = CustomerCashier [[ x <- abstractEvent | x <- ALPHA_CustomerCashier
+         ]]
+    assert DFA [FD= CustomerCashierA
+  
+  
+  -- Connector CustomerPumpHose
+    -- generated definitions (to split long sets)
+    
+    ALPHA_CustomerPumpHose = {|Givehose.take, Gethose.take|}
+    GlueCustomerPumpHose = (Gethose.take -> (Givehose.take -> GlueCustomerPumpHose
+          ))
+      
+    
+    ALPHA_Gethose = {take}
+    ROLEGethose = (take -> ROLEGethose)
+    GethoseA = ROLEGethose [[ x <- abstractEvent | x <- ALPHA_Gethose ]]
+    assert DFA [FD= GethoseA
+    
+    ALPHA_Givehose = {take}
+    ROLEGivehose = (take -> ROLEGivehose)
+    GivehoseA = ROLEGivehose [[ x <- abstractEvent | x <- ALPHA_Givehose
+         ]]
+    assert DFA [FD= GivehoseA
+    
+    ROLEGethoseDET = (take -> ROLEGethoseDET)
+    ROLEGivehoseDET = (take -> ROLEGivehoseDET)
+    
+    channel Gethose: {take}
+    channel Givehose: {take}
+    CustomerPumpHose = (( ROLEGethose[[ x <- Gethose.x | x <- {take } ]]
+        [| diff({|Gethose|}, {}) |]
+        ( ROLEGivehose[[ x <- Givehose.x | x <- {take } ]]
+        [| diff({|Givehose|}, {}) |]
+        GlueCustomerPumpHose)))
+    CustomerPumpHoseA = CustomerPumpHose [[ x <- abstractEvent | x <- ALPHA_CustomerPumpHose
+         ]]
+    assert DFA [FD= CustomerPumpHoseA
+  
+  
+  -- Connector CustomerPumpGas
+    -- generated definitions (to split long sets)
+    
+    ALPHA_CustomerPumpGas = {|Givegas.pump, Getgas.pump|}
+    GlueCustomerPumpGas = (Givegas.pump -> (Getgas.pump -> GlueCustomerPumpGas
+          ))
+      
+    
+    ALPHA_Getgas = {pump}
+    ROLEGetgas = (pump -> ROLEGetgas)
+    GetgasA = ROLEGetgas [[ x <- abstractEvent | x <- ALPHA_Getgas ]]
+    assert DFA [FD= GetgasA
+    
+    ALPHA_Givegas = {pump}
+    ROLEGivegas = (pump -> ROLEGivegas)
+    GivegasA = ROLEGivegas [[ x <- abstractEvent | x <- ALPHA_Givegas ]]
+    assert DFA [FD= GivegasA
+      
+    ROLEGetgasDET = (pump -> ROLEGetgasDET)
+    ROLEGivegasDET = (pump -> ROLEGivegasDET)
+    
+    channel Getgas: {pump}
+    channel Givegas: {pump}
+    CustomerPumpGas = (( ROLEGetgas[[ x <- Getgas.x | x <- {pump } ]]
+        [| diff({|Getgas|}, {}) |]
+        ( ROLEGivegas[[ x <- Givegas.x | x <- {pump } ]]
+        [| diff({|Givegas|}, {}) |]
+        GlueCustomerPumpGas)))
+    CustomerPumpGasA = CustomerPumpGas [[ x <- abstractEvent | x <- ALPHA_CustomerPumpGas
+         ]]
+    assert DFA [FD= CustomerPumpGasA
+  	
+  
+  -- Connector CashierPump
+    -- generated definitions (to split long sets)
+    
+    ALPHA_CashierPump = {|Ack.getOrder, Tell.activate|}
+    GlueCashierPump = (Tell.activate -> (Ack.getOrder -> GlueCashierPump
+          ))
+      
+    
+    ALPHA_Tell = {activate}
+    ROLETell = (activate -> ROLETell)
+    TellA = ROLETell [[ x <- abstractEvent | x <- ALPHA_Tell ]]
+    assert DFA [FD= TellA
+    
+    ALPHA_Ack = {getOrder}
+    ROLEAck = (getOrder -> ROLEAck)
+    AckA = ROLEAck [[ x <- abstractEvent | x <- ALPHA_Ack ]]
+    assert DFA [FD= AckA
+    
+    ROLETellDET = (activate -> ROLETellDET)
+    ROLEAckDET = (getOrder -> ROLEAckDET)
+    
+    channel Tell: {activate}
+    channel Ack: {getOrder}
+    CashierPump = (( ROLETell[[ x <- Tell.x | x <- {activate } ]]
+        [| diff({|Tell|}, {}) |]
+        ( ROLEAck[[ x <- Ack.x | x <- {getOrder } ]]
+        [| diff({|Ack|}, {}) |]
+        GlueCashierPump)))
+    CashierPumpA = CashierPump [[ x <- abstractEvent | x <- ALPHA_CashierPump
+         ]]
+    assert DFA [FD= CashierPumpA
+  
+  
+  --Attachment Test
+    
+    customer1_PayPLUS = PORTPay
+        [| diff( ALPHA_Givemoney , ALPHA_Pay ) |] STOP
+    customer1Cashier_GivemoneyPLUS = ROLEGivemoney
+        [| diff( ALPHA_Pay , ALPHA_Givemoney )|] STOP
+    customer1_PayPLUSDET = customer1_PayPLUS
+        [| union(ALPHA_Pay , ALPHA_Givemoney ) |]
+        ROLEGivemoneyDET
+    assert customer1Cashier_GivemoneyPLUS  [FD= customer1_PayPLUSDET 
+    
+    customer1_TakePLUS = PORTTake
+        [| diff( ALPHA_Gethose , ALPHA_Take ) |] STOP
+    customer1pumphose_GethosePLUS = ROLEGethose
+        [| diff( ALPHA_Take , ALPHA_Gethose )|] STOP
+    customer1_TakePLUSDET = customer1_TakePLUS
+        [| union(ALPHA_Take , ALPHA_Gethose ) |]
+        ROLEGethoseDET
+    assert customer1pumphose_GethosePLUS  [FD= customer1_TakePLUSDET 
+    
+    customer1_GasPLUS = PORTGas
+        [| diff( ALPHA_Getgas , ALPHA_Gas ) |] STOP
+    customer1pumpgas_GetgasPLUS = ROLEGetgas
+        [| diff( ALPHA_Gas , ALPHA_Getgas )|] STOP
+    customer1_GasPLUSDET = customer1_GasPLUS
+        [| union(ALPHA_Gas , ALPHA_Getgas ) |]
+        ROLEGetgasDET
+    assert customer1pumpgas_GetgasPLUS  [FD= customer1_GasPLUSDET 
+    	
+    customer2_PayPLUS = PORTPay
+        [| diff( ALPHA_Givemoney , ALPHA_Pay ) |] STOP
+    customer2Cashier_GivemoneyPLUS = ROLEGivemoney
+        [| diff( ALPHA_Pay , ALPHA_Givemoney )|] STOP
+    customer2_PayPLUSDET = customer2_PayPLUS
+        [| union(ALPHA_Pay , ALPHA_Givemoney ) |]
+        ROLEGivemoneyDET
+    assert customer2Cashier_GivemoneyPLUS  [FD= customer2_PayPLUSDET 
+    
+    customer2_TakePLUS = PORTTake
+        [| diff( ALPHA_Gethose , ALPHA_Take ) |] STOP
+    customer2pumphose_GethosePLUS = ROLEGethose
+        [| diff( ALPHA_Take , ALPHA_Gethose )|] STOP
+    customer2_TakePLUSDET = customer2_TakePLUS
+        [| union(ALPHA_Take , ALPHA_Gethose ) |]
+        ROLEGethoseDET
+    assert customer2pumphose_GethosePLUS  [FD= customer2_TakePLUSDET 
+    
+    customer2_GasPLUS = PORTGas
+        [| diff( ALPHA_Getgas , ALPHA_Gas ) |] STOP
+    customer2pumpgas_GetgasPLUS = ROLEGetgas
+        [| diff( ALPHA_Gas , ALPHA_Getgas )|] STOP
+    customer2_GasPLUSDET = customer2_GasPLUS
+        [| union(ALPHA_Gas , ALPHA_Getgas ) |]
+        ROLEGetgasDET
+    assert customer2pumpgas_GetgasPLUS  [FD= customer2_GasPLUSDET 
+    
+    cashier_Customer1PLUS = PORTCustomer1
+        [| diff( ALPHA_Getmoney , ALPHA_Customer1 ) |] STOP
+    customer1Cashier_GetmoneyPLUS = ROLEGetmoney
+        [| diff( ALPHA_Customer1 , ALPHA_Getmoney )|] STOP
+    cashier_Customer1PLUSDET = cashier_Customer1PLUS
+        [| union(ALPHA_Customer1 , ALPHA_Getmoney ) |]
+        ROLEGetmoneyDET
+    assert customer1Cashier_GetmoneyPLUS  [FD= cashier_Customer1PLUSDET 
+    
+    cashier_Customer2PLUS = PORTCustomer2
+        [| diff( ALPHA_Getmoney , ALPHA_Customer2 ) |] STOP
+    customer2Cashier_GetmoneyPLUS = ROLEGetmoney
+        [| diff( ALPHA_Customer2 , ALPHA_Getmoney )|] STOP
+    cashier_Customer2PLUSDET = cashier_Customer2PLUS
+        [| union(ALPHA_Customer2 , ALPHA_Getmoney ) |]
+        ROLEGetmoneyDET
+    assert customer2Cashier_GetmoneyPLUS  [FD= cashier_Customer2PLUSDET 
+    
+    cashier_ToPumpPLUS = PORTToPump
+        [| diff( ALPHA_Tell , ALPHA_ToPump ) |] STOP
+    cashierpump_TellPLUS = ROLETell
+        [| diff( ALPHA_ToPump , ALPHA_Tell )|] STOP
+    cashier_ToPumpPLUSDET = cashier_ToPumpPLUS
+        [| union(ALPHA_ToPump , ALPHA_Tell ) |]
+        ROLETellDET
+    assert cashierpump_TellPLUS  [FD= cashier_ToPumpPLUSDET 
+    
+    pump_FromCashierPLUS = PORTFromCashier
+        [| diff( ALPHA_Ack , ALPHA_FromCashier ) |] STOP
+    cashierpump_AckPLUS = ROLEAck
+        [| diff( ALPHA_FromCashier , ALPHA_Ack )|] STOP
+    pump_FromCashierPLUSDET = pump_FromCashierPLUS
+        [| union(ALPHA_FromCashier , ALPHA_Ack ) |]
+        ROLEAckDET
+    assert cashierpump_AckPLUS  [FD= pump_FromCashierPLUSDET 
+    
+    pump_Hose1PLUS = PORTHose1
+        [| diff( ALPHA_Givehose , ALPHA_Hose1 ) |] STOP
+    customer1pumphose_GivehosePLUS = ROLEGivehose
+        [| diff( ALPHA_Hose1 , ALPHA_Givehose )|] STOP
+    pump_Hose1PLUSDET = pump_Hose1PLUS
+        [| union(ALPHA_Hose1 , ALPHA_Givehose ) |]
+        ROLEGivehoseDET
+    assert customer1pumphose_GivehosePLUS  [FD= pump_Hose1PLUSDET 
+    
+    pump_Gas1PLUS = PORTGas1
+        [| diff( ALPHA_Givegas , ALPHA_Gas1 ) |] STOP
+    customer1pumpgas_GivegasPLUS = ROLEGivegas
+        [| diff( ALPHA_Gas1 , ALPHA_Givegas )|] STOP
+    pump_Gas1PLUSDET = pump_Gas1PLUS
+        [| union(ALPHA_Gas1 , ALPHA_Givegas ) |]
+        ROLEGivegasDET
+    assert customer1pumpgas_GivegasPLUS  [FD= pump_Gas1PLUSDET 
+    
+    pump_Hose2PLUS = PORTHose2
+        [| diff( ALPHA_Givehose , ALPHA_Hose2 ) |] STOP
+    customer2pumphose_GivehosePLUS = ROLEGivehose
+        [| diff( ALPHA_Hose2 , ALPHA_Givehose )|] STOP
+    pump_Hose2PLUSDET = pump_Hose2PLUS
+        [| union(ALPHA_Hose2 , ALPHA_Givehose ) |]
+        ROLEGivehoseDET
+    assert customer2pumphose_GivehosePLUS  [FD= pump_Hose2PLUSDET 
+    
+    pump_Gas2PLUS = PORTGas2
+        [| diff( ALPHA_Givegas , ALPHA_Gas2 ) |] STOP
+    customer2pumpgas_GivegasPLUS = ROLEGivegas
+        [| diff( ALPHA_Gas2 , ALPHA_Givegas )|] STOP
+    pump_Gas2PLUSDET = pump_Gas2PLUS
+        [| union(ALPHA_Gas2 , ALPHA_Givegas ) |]
+        ROLEGivegasDET
+    assert customer2pumpgas_GivegasPLUS  [FD= pump_Gas2PLUSDET 
+    
+    
+  -- End Configuration
+  
