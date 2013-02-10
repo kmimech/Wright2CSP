@@ -1,0 +1,73 @@
+Configuration GasStation
+
+  Component Cashier
+    Port Customer1 = accept -> Customer1
+    Port Customer2 = accept -> Customer2
+    Port ToPump = _activate -> ToPump
+    Computation = Customer1.accept -> _ToPump.activate -> Computation
+  	[] Customer2.accept -> _ToPump.activate -> Computation
+
+  Component Pump
+    Port Hose1 = take -> Hose1
+    Port Gas1 = _pump -> Gas1
+    Port Hose2 = take -> Hose2
+    Port Gas2 = _pump -> Gas2
+    Port FromCashier = _getOrder -> FromCashier
+   Computation = _FromCashier.getOrder -> ( Hose1.take -> _Gas1.pump -> Computation [] Hose2.take -> _Gas2.pump ->Computation )
+
+  Component Customer
+    Port Pay = _pay -> Pay
+    Port Take = _take -> Take
+    Port Gas = pump -> Gas
+    Computation = _Pay.pay -> _Take.take -> Gas.pump -> Computation
+
+  Connector CustomerCashier
+    Role Givemoney = _pay -> Givemoney
+    Role Getmoney = accept -> Getmoney
+    Glue = Givemoney.pay -> _Getmoney.accept -> Glue
+
+  Connector CustomerPumpHose
+    Role Gethose = _take -> Gethose
+    Role Givehose = take -> Givehose
+    Glue = Gethose.take -> _Givehose.take -> Glue
+
+  Connector CustomerPumpGas
+    Role Getgas = pump -> Getgas
+    Role Givegas = _pump -> Givegas
+    Glue = Givegas.pump -> _Getgas.pump -> Glue
+
+  Connector CashierPump
+    Role Tell = _activate -> Tell
+    Role Ack = getOrder -> Ack
+    Glue = Tell.activate -> _Ack.getOrder -> Glue
+
+  Instances
+    customer1 : Customer
+    customer2 : Customer
+    cashier : Cashier
+    pump : Pump
+    customer1Cashier : CustomerCashier
+    customer2Cashier : CustomerCashier
+    customer1pumphose : CustomerPumpHose
+    customer2pumphose : CustomerPumpHose
+    customer1pumpgas : CustomerPumpGas
+    customer2pumpgas : CustomerPumpGas
+    cashierpump : CashierPump
+
+  Attachments
+    customer1.Pay as customer1Cashier.Givemoney
+    customer1.Take as customer1pumphose.Gethose
+    customer1.Gas as customer1pumpgas.Getgas
+    customer2.Pay as customer2Cashier.Givemoney
+    customer2.Take as customer2pumphose.Gethose
+    customer2.Gas as customer2pumpgas.Getgas
+    cashier.Customer1 as customer1Cashier.Getmoney
+    cashier.Customer2 as customer2Cashier.Getmoney
+    cashier.ToPump as cashierpump.Tell
+    pump.FromCashier as cashierpump.Ack
+    pump.Hose1 as customer1pumphose.Givehose
+    pump.Gas1 as customer1pumpgas.Givegas
+    pump.Hose2 as customer2pumphose.Givehose
+    pump.Gas2 as customer2pumpgas.Givegas
+
+End Configuration
