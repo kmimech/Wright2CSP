@@ -1,0 +1,25 @@
+--Attachment Test
+    customer1_PayPLUS = PORTPay
+      [| diff( ALPHA_Givemoney , ALPHA_Pay ) |] STOP
+    customer1Cashier_GivemoneyPLUS = ROLEGivemoney
+      [| diff( ALPHA_Pay , ALPHA_Givemoney )|] STOP
+    customer1_PayPLUSDET = customer1_PayPLUS
+      [| union(ALPHA_Pay , ALPHA_Givemoney ) |]
+        ROLEGivemoneyDET
+    assert customer1Cashier_GivemoneyPLUS  [FD= customer1_PayPLUSDET 
+    customer1_TakePLUS = PORTTake
+      [| diff( ALPHA_Gethose , ALPHA_Take ) |] STOP
+    customer1pumphose_GethosePLUS = ROLEGethose
+      [| diff( ALPHA_Take , ALPHA_Gethose )|] STOP
+    customer1_TakePLUSDET = customer1_TakePLUS
+      [| union(ALPHA_Take , ALPHA_Gethose ) |]
+      ROLEGethoseDET
+    assert customer1pumphose_GethosePLUS  [FD= customer1_TakePLUSDET 
+    customer1_GasPLUS = PORTGas
+      [| diff( ALPHA_Getgas , ALPHA_Gas ) |] STOP
+    customer1pumpgas_GetgasPLUS = ROLEGetgas
+      [| diff( ALPHA_Gas , ALPHA_Getgas )|] STOP
+    customer1_GasPLUSDET = customer1_GasPLUS
+      [| union(ALPHA_Gas , ALPHA_Getgas ) |]
+        ROLEGetgasDET
+    assert customer1pumpgas_GetgasPLUS  [FD= customer1_GasPLUSDET 
